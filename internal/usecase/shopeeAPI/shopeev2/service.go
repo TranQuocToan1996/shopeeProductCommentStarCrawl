@@ -71,6 +71,9 @@ func (api *V2) GetRatings(ctx context.Context, rawURL string) (*entity.RatingRes
 			resp.Data.PurchaseBarAbt = respElem.Data.PurchaseBarAbt
 		}
 		current = len(resp.Data.Ratings)
+		if len(resp.Data.Ratings) == 0 {
+			break
+		}
 		attemp--
 		if attemp < 0 {
 			return nil, errors.New("too large query")
@@ -91,7 +94,7 @@ func (api *V2) GetRatingsLimitSkip(ctx context.Context, rawURL string, limit, of
 	resp := &entity.RatingResp{}
 	current := 0
 	for current < limit {
-		respElem, err := api.getRatingLimitOffset(ctx, itemID, shopID, limit, offset+current)
+		respElem, err := api.getRatingLimitOffset(ctx, itemID, shopID, api.cfg.Limit, offset+current)
 		if respElem.Error != 0 || respElem.ErrorMsg != nil {
 			resp.Error = respElem.Error
 			resp.ErrorMsg = respElem.ErrorMsg
@@ -119,6 +122,9 @@ func (api *V2) GetRatingsLimitSkip(ctx context.Context, rawURL string, limit, of
 			resp.Data.PurchaseBarAbt = respElem.Data.PurchaseBarAbt
 		}
 		current = len(resp.Data.Ratings)
+		if len(resp.Data.Ratings) == 0 {
+			break
+		}
 	}
 
 	return resp, nil
