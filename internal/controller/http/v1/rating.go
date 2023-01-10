@@ -114,7 +114,7 @@ func (r *ratingRoutes) byLimitAndSkip(c *gin.Context) {
 	records := r.makeCSVRow(req.Words, ratingObj.Data.Ratings)
 
 	filename := fmt.Sprintf("%v.csv", time.Now().Unix())
-	r.writeCSV(c, filename, records)
+	r.writeAllCSV(c, filename, records)
 	c.FileAttachment(fmt.Sprintf("./%v", filename), filename)
 	c.Writer.Header().Set("attachment", fmt.Sprintf("filename=%v", filename))
 }
