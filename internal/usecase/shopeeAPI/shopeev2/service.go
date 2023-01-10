@@ -81,6 +81,49 @@ func (api *V2) GetRatings(ctx context.Context, rawURL string) (*entity.RatingRes
 	return resp, nil
 }
 
+func (api *V2) GetRatingsLimitSkip(ctx context.Context, rawURL string, limit, offset int) (*entity.RatingResp, error) {
+
+	itemID, shopID := api.getID(rawURL)
+	if len(itemID) == 0 || len(shopID) == 0 {
+		return nil, errors.New("wrong link")
+	}
+
+	resp := &entity.RatingResp{}
+	current := 0
+	for current < limit {
+		respElem, err := api.getRatingLimitOffset(ctx, itemID, shopID, limit, offset+current)
+		if respElem.Error != 0 || respElem.ErrorMsg != nil {
+			resp.Error = respElem.Error
+			resp.ErrorMsg = respElem.ErrorMsg
+		}
+
+		if err != nil {
+			resp.Error = -1
+			resp.ErrorMsg = err.Error()
+		}
+
+		resp.Data.Ratings = append(resp.Data.Ratings, respElem.Data.Ratings...)
+		if current == 0 {
+			resp.Data.ItemRatingSummary = respElem.Data.ItemRatingSummary
+			resp.Data.IsSipItem = respElem.Data.IsSipItem
+			resp.Data.RcmdAlgo = respElem.Data.RcmdAlgo
+			resp.Data.DowngradeSwitch = respElem.Data.DowngradeSwitch
+			resp.Data.HasMore = respElem.Data.HasMore
+			resp.Data.ShowLocalReview = respElem.Data.ShowLocalReview
+			resp.Data.BrowsingUI = respElem.Data.BrowsingUI
+			resp.Data.EnableBuyerGalleryMedia = respElem.Data.EnableBuyerGalleryMedia
+			resp.Data.UserLatestRating = respElem.Data.UserLatestRating
+			resp.Data.SizeInfoAbt = respElem.Data.SizeInfoAbt
+			resp.Data.TopRatings = respElem.Data.TopRatings
+			resp.Data.ResizeImageAbt = respElem.Data.ResizeImageAbt
+			resp.Data.PurchaseBarAbt = respElem.Data.PurchaseBarAbt
+		}
+		current = len(resp.Data.Ratings)
+	}
+
+	return resp, nil
+}
+
 // baseURLAndEndpoint.itemID.shopID?querystring
 func (api *V2) getID(rawURL string) (itemID, shopID string) {
 	if len(rawURL) == 0 ||
@@ -98,6 +141,34 @@ func (api *V2) getRating(ctx context.Context, itemID, shopID string, offset int)
 		api.version,
 		itemID,
 		api.cfg.Limit,
+		offset,
+		shopID)
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+
+	// The shopee api also limit the data resp on each call, so it is safe to readall
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	rating := &entity.RatingResp{}
+	err = json.Unmarshal(body, rating)
+	if err != nil {
+		return nil, err
+	}
+
+	return rating, nil
+}
+
+func (api *V2) getRatingLimitOffset(ctx context.Context, itemID, shopID string, limit, offset int) (*entity.RatingResp, error) {
+	url := fmt.Sprintf(ratingFormat,
+		api.cfg.BaseURL,
+		api.version,
+		itemID,
+		limit,
 		offset,
 		shopID)
 	resp, err := http.Get(url)

@@ -24,7 +24,7 @@ func newRatingRoutes(handler *gin.RouterGroup, u usecase.Rating, l logger.Interf
 	h := handler.Group("/rating")
 	{
 		h.POST("/csv", r.getOne)
-		h.POST("/words", r.words)
+		h.POST("/bylimitoffset", r.byLimitAndSkip)
 	}
 }
 
@@ -50,14 +50,16 @@ func (r *ratingRoutes) getOne(c *gin.Context) {
 
 	records := [][]string{{"UserName", "Star", "Comments"}}
 	for _, data := range ratingObj.Data.Ratings {
-		match := true
+		match := false
 		if len(req.Words) > 0 {
 			for _, word := range req.Words {
-				if !strings.Contains(data.Comment, word) {
-					match = false
+				if strings.Contains(data.Comment, word) {
+					match = true
 					break
 				}
 			}
+		} else {
+			match = true
 		}
 
 		if match {
@@ -67,7 +69,6 @@ func (r *ratingRoutes) getOne(c *gin.Context) {
 				data.Comment,
 			})
 		}
-
 	}
 
 	filename := fmt.Sprintf("%v.csv", time.Now().Unix())
@@ -92,9 +93,12 @@ func (r *ratingRoutes) getOne(c *gin.Context) {
 	c.Writer.Header().Set("attachment", fmt.Sprintf("filename=%v", filename))
 }
 
-func (r *ratingRoutes) words(c *gin.Context) {
+func (r *ratingRoutes) byLimitAndSkip(c *gin.Context) {
 	req := &struct {
-		RawURL string `json:"url"`
+		RawURL string   `json:"url"`
+		Limit  int      `json:"limit"`
+		Offset int      `json:"offset"`
+		Words  []string `json:"words"`
 	}{}
 	err := c.ShouldBindJSON(req)
 	if len(req.RawURL) == 0 || err != nil {
@@ -103,7 +107,7 @@ func (r *ratingRoutes) words(c *gin.Context) {
 		return
 	}
 
-	ratingObj, err := r.u.GetRatings(c.Request.Context(), req.RawURL)
+	ratingObj, err := r.u.GetRatingsLimitSkip(c.Request.Context(), req.RawURL, req.Limit, req.Offset)
 	if err != nil {
 		r.l.Error(err, "http - v1 - history")
 		errorResponse(c, http.StatusInternalServerError, "some problems")
@@ -113,11 +117,26 @@ func (r *ratingRoutes) words(c *gin.Context) {
 
 	records := [][]string{{"UserName", "Star", "Comments"}}
 	for _, data := range ratingObj.Data.Ratings {
-		records = append(records, []string{
-			data.AuthorUsername,
-			fmt.Sprint(data.RatingStar),
-			data.Comment,
-		})
+		match := false
+		if len(req.Words) > 0 {
+			for _, word := range req.Words {
+				if strings.Contains(data.Comment, word) {
+					match = true
+					break
+				}
+			}
+		} else {
+			match = true
+		}
+
+		if match {
+			records = append(records, []string{
+				data.AuthorUsername,
+				fmt.Sprint(data.RatingStar),
+				data.Comment,
+			})
+		}
+
 	}
 
 	filename := fmt.Sprintf("%v.csv", time.Now().Unix())

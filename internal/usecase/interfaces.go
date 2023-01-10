@@ -10,9 +10,11 @@ import (
 type (
 	Rating interface {
 		GetRatings(context.Context, string) (*entity.RatingResp, error)
+		GetRatingsLimitSkip(context.Context, string, int, int) (*entity.RatingResp, error)
 	}
 
 	ShopeeAPI interface {
 		GetRatings(context.Context, string) (*entity.RatingResp, error)
+		GetRatingsLimitSkip(context.Context, string, int, int) (*entity.RatingResp, error)
 	}
 )

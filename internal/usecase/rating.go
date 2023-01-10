@@ -21,3 +21,7 @@ func New(cfg config.Config) *RatingUseCase {
 func (uc *RatingUseCase) GetRatings(ctx context.Context, rawURL string) (*entity.RatingResp, error) {
 	return uc.api.GetRatings(ctx, rawURL)
 }
+
+func (uc *RatingUseCase) GetRatingsLimitSkip(ctx context.Context, rawURL string, limit, skip int) (*entity.RatingResp, error) {
+	return uc.api.GetRatingsLimitSkip(ctx, rawURL, limit, skip)
+}
