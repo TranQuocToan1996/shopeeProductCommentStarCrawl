@@ -24,12 +24,12 @@ func newRatingRoutes(handler *gin.RouterGroup, u usecase.Rating, l logger.Interf
 
 	h := handler.Group("/rating")
 	{
-		h.POST("/csv", r.getOne)
+		h.POST("/csv", r.getAll)
 		h.POST("/bylimitoffset", r.byLimitAndSkip)
 	}
 }
 
-func (r *ratingRoutes) getOne(c *gin.Context) {
+func (r *ratingRoutes) getAll(c *gin.Context) {
 	req := &struct {
 		RawURL string   `json:"url"`
 		Words  []string `json:"words"`
@@ -53,7 +53,7 @@ func (r *ratingRoutes) getOne(c *gin.Context) {
 
 	filename := fmt.Sprintf("%v.csv", time.Now().Unix())
 
-	r.writeCSV(c, filename, records)
+	r.writeAllCSV(c, filename, records)
 	c.FileAttachment(fmt.Sprintf("./%v", filename), filename)
 	c.Writer.Header().Set("attachment", fmt.Sprintf("filename=%v", filename))
 }
@@ -75,6 +75,18 @@ func (r *ratingRoutes) writeCSV(c *gin.Context, filename string, records [][]str
 			errorResponse(c, http.StatusInternalServerError, "some problems")
 		}
 	}
+}
+
+func (r *ratingRoutes) writeAllCSV(c *gin.Context, filename string, records [][]string) {
+	f, err := os.Create(filename)
+	if err != nil {
+		r.l.Error(err, "http - v1 - history")
+		errorResponse(c, http.StatusInternalServerError, "some problems")
+	}
+	defer f.Close()
+
+	w := csv.NewWriter(f)
+	w.WriteAll(records)
 }
 
 func (r *ratingRoutes) byLimitAndSkip(c *gin.Context) {
