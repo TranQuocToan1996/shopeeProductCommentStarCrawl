@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TranQuocToan1996/shopeerating/internal/entity"
 	"github.com/TranQuocToan1996/shopeerating/internal/usecase"
 	"github.com/TranQuocToan1996/shopeerating/pkg/logger"
 	"github.com/gin-gonic/gin"
@@ -48,31 +49,16 @@ func (r *ratingRoutes) getOne(c *gin.Context) {
 		return
 	}
 
-	records := [][]string{{"UserName", "Star", "Comments"}}
-	for _, data := range ratingObj.Data.Ratings {
-		match := false
-		if len(req.Words) > 0 {
-			for _, word := range req.Words {
-				if strings.Contains(data.Comment, word) {
-					match = true
-					break
-				}
-			}
-		} else {
-			match = true
-		}
-
-		if match {
-			records = append(records, []string{
-				data.AuthorUsername,
-				fmt.Sprint(data.RatingStar),
-				data.Comment,
-			})
-		}
-	}
+	records := r.makeCSVRow(req.Words, ratingObj.Data.Ratings)
 
 	filename := fmt.Sprintf("%v.csv", time.Now().Unix())
 
+	r.writeCSV(c, filename, records)
+	c.FileAttachment(fmt.Sprintf("./%v", filename), filename)
+	c.Writer.Header().Set("attachment", fmt.Sprintf("filename=%v", filename))
+}
+
+func (r *ratingRoutes) writeCSV(c *gin.Context, filename string, records [][]string) {
 	f, err := os.Create(filename)
 	if err != nil {
 		r.l.Error(err, "http - v1 - history")
@@ -89,8 +75,6 @@ func (r *ratingRoutes) getOne(c *gin.Context) {
 			errorResponse(c, http.StatusInternalServerError, "some problems")
 		}
 	}
-	c.FileAttachment(fmt.Sprintf("./%v", filename), filename)
-	c.Writer.Header().Set("attachment", fmt.Sprintf("filename=%v", filename))
 }
 
 func (r *ratingRoutes) byLimitAndSkip(c *gin.Context) {
@@ -115,11 +99,20 @@ func (r *ratingRoutes) byLimitAndSkip(c *gin.Context) {
 		return
 	}
 
+	records := r.makeCSVRow(req.Words, ratingObj.Data.Ratings)
+
+	filename := fmt.Sprintf("%v.csv", time.Now().Unix())
+	r.writeCSV(c, filename, records)
+	c.FileAttachment(fmt.Sprintf("./%v", filename), filename)
+	c.Writer.Header().Set("attachment", fmt.Sprintf("filename=%v", filename))
+}
+
+func (r *ratingRoutes) makeCSVRow(words []string, ratings []entity.Ratings) [][]string {
 	records := [][]string{{"UserName", "Star", "Comments"}}
-	for _, data := range ratingObj.Data.Ratings {
+	for _, data := range ratings {
 		match := false
-		if len(req.Words) > 0 {
-			for _, word := range req.Words {
+		if len(words) > 0 {
+			for _, word := range words {
 				if strings.Contains(data.Comment, word) {
 					match = true
 					break
@@ -136,27 +129,7 @@ func (r *ratingRoutes) byLimitAndSkip(c *gin.Context) {
 				data.Comment,
 			})
 		}
-
 	}
 
-	filename := fmt.Sprintf("%v.csv", time.Now().Unix())
-
-	f, err := os.Create(filename)
-	if err != nil {
-		r.l.Error(err, "http - v1 - history")
-		errorResponse(c, http.StatusInternalServerError, "some problems")
-	}
-	defer f.Close()
-
-	w := csv.NewWriter(f)
-	defer w.Flush()
-
-	for _, record := range records {
-		if err := w.Write(record); err != nil {
-			r.l.Error(err, "http - v1 - history")
-			errorResponse(c, http.StatusInternalServerError, "some problems")
-		}
-	}
-	c.FileAttachment(fmt.Sprintf("./%v", filename), filename)
-	c.Writer.Header().Set("attachment", fmt.Sprintf("filename=%v", filename))
+	return records
 }
