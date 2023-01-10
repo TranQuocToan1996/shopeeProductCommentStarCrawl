@@ -94,7 +94,11 @@ func (api *V2) GetRatingsLimitSkip(ctx context.Context, rawURL string, limit, of
 	resp := &entity.RatingResp{}
 	current := 0
 	for current < limit {
-		respElem, err := api.getRatingLimitOffset(ctx, itemID, shopID, api.cfg.Limit, offset+current)
+		var localLimit = api.cfg.Limit
+		if limit-current < api.cfg.Limit {
+			localLimit = limit - current
+		}
+		respElem, err := api.getRatingLimitOffset(ctx, itemID, shopID, localLimit, offset+current)
 		if respElem.Error != 0 || respElem.ErrorMsg != nil {
 			resp.Error = respElem.Error
 			resp.ErrorMsg = respElem.ErrorMsg
