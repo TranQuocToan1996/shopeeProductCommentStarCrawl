@@ -126,12 +126,16 @@ func (api *V2) GetRatingsLimitSkip(ctx context.Context, rawURL string, limit, of
 
 // baseURLAndEndpoint.itemID.shopID?querystring
 func (api *V2) getID(rawURL string) (itemID, shopID string) {
-	if len(rawURL) == 0 ||
-		!strings.Contains(rawURL, "?") || !strings.Contains(rawURL, ".") {
+	if len(rawURL) == 0 || !strings.Contains(rawURL, ".") {
 		return "", ""
 	}
-	saparateByQuestion := strings.Split(rawURL, "?")
-	saparateByDot := strings.Split(saparateByQuestion[0], ".")
+	var saparateByDot []string
+	if strings.Contains(rawURL, "?") {
+		saparateByQuestion := strings.Split(rawURL, "?")
+		saparateByDot = strings.Split(saparateByQuestion[0], ".")
+	} else {
+		saparateByDot = strings.Split(rawURL, ".")
+	}
 	return saparateByDot[len(saparateByDot)-1], saparateByDot[len(saparateByDot)-2]
 }
 
