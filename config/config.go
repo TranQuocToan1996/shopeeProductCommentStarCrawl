@@ -6,7 +6,10 @@ import (
 	"sync"
 )
 
-var configOnce sync.Once = sync.Once{}
+var (
+	configOnce      sync.Once = sync.Once{}
+	configSingleton *Config
+)
 
 type (
 	// Main config for dependency injection
@@ -44,6 +47,9 @@ type (
 )
 
 func NewConfig() (*Config, error) {
+	if configSingleton != nil {
+		return configSingleton, nil
+	}
 	cfg := &Config{}
 
 	var err error
@@ -60,6 +66,7 @@ func NewConfig() (*Config, error) {
 			}
 		}
 		err = json.Unmarshal(buf, cfg)
+		configSingleton = cfg
 	})
 
 	if err != nil {
